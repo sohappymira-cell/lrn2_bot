@@ -11,9 +11,12 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_message(chat_id, text):
+def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": text})
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    requests.post(url, json=payload)
 
 def get_keyboard():
     return {
@@ -33,7 +36,6 @@ def get_tasks(chat_id):
         return []
 
 def add_task(chat_id, name, article, deadline):
-    print(f"💾 Сохраняю: {chat_id}, {name}, {article}, {deadline}", flush=True)
     data = {
         "chat_id": str(chat_id),
         "name": name,
@@ -44,7 +46,7 @@ def add_task(chat_id, name, article, deadline):
         supabase.table("tasks").upsert(data, on_conflict="chat_id, article, deadline").execute()
         return True
     except Exception as e:
-        print("DB add error:", e, flush=True)
+        print("DB add error:", e)
         return False
 
 user_steps = {}
@@ -59,10 +61,12 @@ def webhook():
     chat_id = msg["chat"]["id"]
     text = msg.get("text", "")
 
+    # /start
     if text == "/start":
         send_message(chat_id, "📅 Бот для учёту термінів!\n\nОберіть дію:", get_keyboard())
         return jsonify({"status": "ok"})
 
+    # Список задач
     if text == "📋 Список":
         tasks = get_tasks(chat_id)
         if not tasks:
@@ -74,15 +78,18 @@ def webhook():
         send_message(chat_id, msg)
         return jsonify({"status": "ok"})
 
+    # Проверка сроков (заглушка)
     if text == "🔍 Перевірити терміни":
         send_message(chat_id, "⏳ Функція в розробці")
         return jsonify({"status": "ok"})
 
+    # Добавить задачу 
     if text == "➕ Додати":
         user_steps[chat_id] = {"step": "waiting_name"}
         send_message(chat_id, "📝 Введи назву товару:")
         return jsonify({"status": "ok"})
 
+    # ПОШАГОВОЕ ДОБАВЛЕНИЕ
     if chat_id in user_steps:
         if user_steps[chat_id]["step"] == "waiting_name":
             user_steps[chat_id]["name"] = text
@@ -106,6 +113,8 @@ def webhook():
             finally:
                 del user_steps[chat_id]
             return jsonify({"status": "ok"})
+
+    # Если ничего не подошло
 
     send_message(chat_id, "Використовуйте кнопки 👇", get_keyboard())
     return jsonify({"status": "ok"})
