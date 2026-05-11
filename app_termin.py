@@ -7,13 +7,11 @@ from supabase import create_client
 
 app = Flask(__name__)
 
-# === НАСТРОЙКИ ===
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
@@ -57,7 +55,6 @@ def add_task(chat_id, name, article, deadline):
         print(f"❌ Ошибка Supabase: {e}", flush=True)
         return False
 
-# === ОБРАБОТЧИКИ ===
 def handle_start(chat_id):
     send_message(chat_id, "📅 Бот для учёту термінів!\n\nОберіть дію:", get_keyboard())
 
@@ -77,7 +74,6 @@ def handle_add_start(chat_id, user_steps):
 def handle_unknown(chat_id):
     send_message(chat_id, "Використовуйте кнопки 👇", get_keyboard())
 
-# === ВЕБХУК ===
 user_steps = {}
 
 @app.route('/webhook', methods=['POST'])
