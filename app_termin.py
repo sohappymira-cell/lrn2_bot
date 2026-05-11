@@ -11,12 +11,9 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_message(chat_id, text, reply_markup=None):
+def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
-    if reply_markup:
-        payload["reply_markup"] = reply_markup
-    requests.post(url, json=payload)
+    requests.post(url, json={"chat_id": chat_id, "text": text})
 
 def get_keyboard():
     return {
@@ -61,35 +58,30 @@ def webhook():
     chat_id = msg["chat"]["id"]
     text = msg.get("text", "")
 
-    # /start
     if text == "/start":
         send_message(chat_id, "📅 Бот для учёту термінів!\n\nОберіть дію:", get_keyboard())
         return jsonify({"status": "ok"})
 
-    # Список задач
     if text == "📋 Список":
         tasks = get_tasks(chat_id)
         if not tasks:
             send_message(chat_id, "📭 Список порожній")
             return jsonify({"status": "ok"})
-        msg = "📋 **Список задач:**\n\n"
+        msg_text = "📋 **Список задач:**\n\n"
         for i, t in enumerate(tasks, 1):
-            msg += f"{i}. **{t['name']}**\n   📦 {t['article']}\n   📅 {t['deadline']}\n\n"
-        send_message(chat_id, msg)
+            msg_text += f"{i}. **{t['name']}**\n   📦 {t['article']}\n   📅 {t['deadline']}\n\n"
+        send_message(chat_id, msg_text)
         return jsonify({"status": "ok"})
 
-    # Проверка сроков (заглушка)
     if text == "🔍 Перевірити терміни":
         send_message(chat_id, "⏳ Функція в розробці")
         return jsonify({"status": "ok"})
 
-    # Добавить задачу 
     if text == "➕ Додати":
         user_steps[chat_id] = {"step": "waiting_name"}
         send_message(chat_id, "📝 Введи назву товару:")
         return jsonify({"status": "ok"})
 
-    # ПОШАГОВОЕ ДОБАВЛЕНИЕ
     if chat_id in user_steps:
         if user_steps[chat_id]["step"] == "waiting_name":
             user_steps[chat_id]["name"] = text
@@ -114,22 +106,12 @@ def webhook():
                 del user_steps[chat_id]
             return jsonify({"status": "ok"})
 
-    # Если ничего не подошло
-
     send_message(chat_id, "Використовуйте кнопки 👇", get_keyboard())
     return jsonify({"status": "ok"})
 
 @app.route('/')
 def index():
     return "✅ Бот працює", 200
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    data = request.get_json()
-    if not data or "message" not in data:
-        return jsonify({"status": "ok"})
-    # ... обработка
-    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
