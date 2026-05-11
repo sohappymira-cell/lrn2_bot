@@ -114,5 +114,13 @@ def webhook():
 def index():
     return "✅ Бот працює", 200
 
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    data = request.get_json()
+    if not data or "message" not in data:
+        return jsonify({"status": "ok"})
+    # ... обработка
+    return jsonify({"status": "ok"})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
