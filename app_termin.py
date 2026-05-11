@@ -11,10 +11,15 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_message(chat_id, text):
+# === ОТПРАВКА СООБЩЕНИЙ (с поддержкой клавиатуры) ===
+def send_message(chat_id, text, reply_markup=None):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": chat_id, "text": text})
+    payload = {"chat_id": chat_id, "text": text}
+    if reply_markup:
+        payload["reply_markup"] = reply_markup
+    requests.post(url, json=payload)
 
+# === КЛАВИАТУРА ===
 def get_keyboard():
     return {
         "keyboard": [
@@ -24,6 +29,7 @@ def get_keyboard():
         "resize_keyboard": True
     }
 
+# === РАБОТА С SUPABASE ===
 def get_tasks(chat_id):
     try:
         res = supabase.table("tasks").select("*").eq("chat_id", str(chat_id)).execute()
@@ -113,5 +119,5 @@ def webhook():
 def index():
     return "✅ Бот працює", 200
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+if __name__ == '__main__':
+      app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
