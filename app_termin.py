@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import os
 import requests
 from datetime import datetime
@@ -12,12 +11,9 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-def send_message(chat_id, text, reply_markup=None):
+def send_message(chat_id, text):
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
-    if reply_markup:
-        payload["reply_markup"] = reply_markup
-    requests.post(url, json=payload)
+    requests.post(url, json={"chat_id": chat_id, "text": text})
 
 def get_keyboard():
     return {
@@ -37,42 +33,19 @@ def get_tasks(chat_id):
         return []
 
 def add_task(chat_id, name, article, deadline):
-    print(f"🔍 add_task вызвана: chat_id={chat_id}, name={name}, article={article}, deadline={deadline}", flush=True)
-
+    print(f"💾 Сохраняю: {chat_id}, {name}, {article}, {deadline}", flush=True)
     data = {
         "chat_id": str(chat_id),
         "name": name,
         "article": article,
         "deadline": deadline
     }
-    print(f"📦 Данные для Supabase: {data}", flush=True)
-
     try:
-        response = supabase.table("tasks").upsert(data, on_conflict="chat_id, article, deadline").execute()
-        print(f"✅ Ответ Supabase: {response.data}", flush=True)
+        supabase.table("tasks").upsert(data, on_conflict="chat_id, article, deadline").execute()
         return True
     except Exception as e:
-        print(f"❌ Ошибка Supabase: {e}", flush=True)
+        print("DB add error:", e, flush=True)
         return False
-
-def handle_start(chat_id):
-    send_message(chat_id, "📅 Бот для учёту термінів!\n\nОберіть дію:", get_keyboard())
-
-def handle_list(chat_id):
-    tasks = get_tasks(chat_id)
-    if not tasks:
-        send_message(chat_id, "📭 Список порожній")
-        return
-    msg = "📋 **Список задач:**\n\n"
-    for i, t in enumerate(tasks, 1):
-        msg += f"{i}. **{t['name']}**\n   📦 {t['article']}\n   📅 {t['deadline']}\n\n"
-    send_message(chat_id, msg)
-
-def handle_add_start(chat_id, user_steps):
-    user_steps[chat_id] = {"step": "waiting_name"}
-
-def handle_unknown(chat_id):
-    send_message(chat_id, "Використовуйте кнопки 👇", get_keyboard())
 
 user_steps = {}
 
@@ -86,13 +59,19 @@ def webhook():
     chat_id = msg["chat"]["id"]
     text = msg.get("text", "")
 
-    # Обработка команд и кнопок
     if text == "/start":
-        handle_start(chat_id)
+        send_message(chat_id, "📅 Бот для учёту термінів!\n\nОберіть дію:", get_keyboard())
         return jsonify({"status": "ok"})
 
     if text == "📋 Список":
-        handle_list(chat_id)
+        tasks = get_tasks(chat_id)
+        if not tasks:
+            send_message(chat_id, "📭 Список порожній")
+            return jsonify({"status": "ok"})
+        msg = "📋 **Список задач:**\n\n"
+        for i, t in enumerate(tasks, 1):
+            msg += f"{i}. **{t['name']}**\n   📦 {t['article']}\n   📅 {t['deadline']}\n\n"
+        send_message(chat_id, msg)
         return jsonify({"status": "ok"})
 
     if text == "🔍 Перевірити терміни":
@@ -100,11 +79,10 @@ def webhook():
         return jsonify({"status": "ok"})
 
     if text == "➕ Додати":
-        handle_add_start(chat_id, user_steps)
+        user_steps[chat_id] = {"step": "waiting_name"}
         send_message(chat_id, "📝 Введи назву товару:")
         return jsonify({"status": "ok"})
 
-    # Пошагове додавання
     if chat_id in user_steps:
         if user_steps[chat_id]["step"] == "waiting_name":
             user_steps[chat_id]["name"] = text
@@ -129,7 +107,7 @@ def webhook():
                 del user_steps[chat_id]
             return jsonify({"status": "ok"})
 
-    handle_unknown(chat_id)
+    send_message(chat_id, "Використовуйте кнопки 👇", get_keyboard())
     return jsonify({"status": "ok"})
 
 @app.route('/')
