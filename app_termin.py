@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import requests
 from datetime import datetime
@@ -38,17 +39,22 @@ def get_tasks(chat_id):
         return []
 
 def add_task(chat_id, name, article, deadline):
+    print(f"🔍 add_task вызвана: chat_id={chat_id}, name={name}, article={article}, deadline={deadline}", flush=True)
+
     data = {
         "chat_id": str(chat_id),
         "name": name,
         "article": article,
         "deadline": deadline
     }
+    print(f"📦 Данные для Supabase: {data}", flush=True)
+
     try:
-        supabase.table("tasks").upsert(data, on_conflict="chat_id, article, deadline").execute()
+        response = supabase.table("tasks").upsert(data, on_conflict="chat_id, article, deadline").execute()
+        print(f"✅ Ответ Supabase: {response.data}", flush=True)
         return True
     except Exception as e:
-        print("DB add error:", e)
+        print(f"❌ Ошибка Supabase: {e}", flush=True)
         return False
 
 # === ОБРАБОТЧИКИ ===
